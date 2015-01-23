@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using NUnit.Framework;
 using Should;
 using Should.Core.Exceptions;
@@ -15,6 +16,7 @@ namespace SpecsFor.Tests.ShouldExtensions
 			public string Name { get; set; }
 			public TestObject Nested { get; set; }
 			public TestObject[] NestedArray { get; set; }
+            public List<TestObject> NestedList { get; set; }
 			public DateTime? OptionalDate { get; set; }
 		}
 
@@ -432,6 +434,58 @@ namespace SpecsFor.Tests.ShouldExtensions
 				}
 			}));
 		}
+
+	    [Test]
+	    public void then_it_should_work_with_list_objects()
+	    {
+	        SUT.NestedList = new List<TestObject>
+            {
+                new TestObject
+                {
+                    Awesomeness = 1000,
+                    Name = "Awesome list item"
+                }
+	        };
+
+            SUT.ShouldLookLike(() => new TestObject
+            {
+                NestedList = new List<TestObject>
+                {
+                    new TestObject
+                    {
+                        Awesomeness = 1000,
+                        Name = "Awesome list item"
+                    }
+                }
+            });
+	    }
+
+        [Test]
+        public void then_it_should_fail_with_list_objects_that_do_not_match()
+        {
+            SUT.NestedList = new List<TestObject>
+            {
+                new TestObject
+                {
+                    Awesomeness = 10, // there is less awesomeness here than there should be
+                    Name = "Awesome list item"
+                }
+	        };
+
+            var ex = Assert.Throws<Exception>(() => SUT.ShouldLookLike(() => new TestObject
+            {
+                NestedList = new List<TestObject>
+                {
+                    new TestObject
+                    {
+                        Awesomeness = 1000,
+                        Name = "Awesome list item"
+                    }
+                }
+            }));
+
+            ex.Message.ShouldEqual("For List`1[0].Awesomeness, expected [1000] but found [10].\r\n");
+        }
 
 		[Test]
 		public void then_it_throws_a_good_error_if_you_pass_in_anything_but_a_member_init_expression()

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using Moq;
@@ -38,6 +39,12 @@ namespace SpecsFor.ShouldExtensions
 			}
 		}
 
+	    private static void ShouldMatchList(IEnumerable actual, Expression expression)
+	    {
+            var expected = (IEnumerable)Expression.Lambda<Func<object>>(expression).Compile()();
+            actual.ShouldLookLike(expected);
+	    }
+
 		private static void ShouldMatchIEnumerable(IEnumerable actual, NewArrayExpression arrayExpression)
 		{
 			var array = actual.Cast<object>().ToArray();
@@ -75,8 +82,7 @@ namespace SpecsFor.ShouldExtensions
 				{
 					ShouldMatch(actualValue, bindingAsAnotherExpression.Expression as MemberInitExpression);
 				}
-				else if (bindingAsAnotherExpression != null &&
-				         bindingAsAnotherExpression.Expression.NodeType == ExpressionType.NewArrayInit)
+				else if (bindingAsAnotherExpression != null && bindingAsAnotherExpression.Expression.NodeType == ExpressionType.NewArrayInit)
 				{
 					ShouldMatchIEnumerable(actualValue as IEnumerable, bindingAsAnotherExpression.Expression as NewArrayExpression);
 				}
@@ -99,6 +105,10 @@ namespace SpecsFor.ShouldExtensions
 						throw new EqualException(Matcher.LastMatcher.ToString(), actualValue);
 					}
 				}
+                else if (bindingAsAnotherExpression != null && actualValue.GetType().IsGenericType && actualValue.GetType().GetGenericTypeDefinition() == typeof(List<>))
+                {
+                    ShouldMatchList(actualValue as IEnumerable, bindingAsAnotherExpression.Expression);
+                }
 				else
 				{
 					actualValue.ShouldEqual(expectedValue);
