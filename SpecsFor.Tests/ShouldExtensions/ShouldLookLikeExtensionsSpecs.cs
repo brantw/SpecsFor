@@ -443,7 +443,8 @@ namespace SpecsFor.Tests.ShouldExtensions
                 new TestObject
                 {
                     Awesomeness = 1000,
-                    Name = "Awesome list item"
+                    Name = "Awesome list item",
+                    TestObjectId = Guid.NewGuid()
                 }
 	        };
 
@@ -484,7 +485,7 @@ namespace SpecsFor.Tests.ShouldExtensions
                 }
             }));
 
-            ex.Message.ShouldEqual("For List`1[0].Awesomeness, expected [1000] but found [10].\r\n");
+            ex.Message.ShouldEqual("For Object[][0].Awesomeness, expected [1000] but found [10].\r\n");
         }
 
 		[Test]

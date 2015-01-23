@@ -39,30 +39,48 @@ namespace SpecsFor.ShouldExtensions
 			}
 		}
 
-	    private static void ShouldMatchList(IEnumerable actual, Expression expression)
-	    {
-            var expected = (IEnumerable)Expression.Lambda<Func<object>>(expression).Compile()();
-            actual.ShouldLookLike(expected);
-	    }
+        private static void ShouldMatchIEnumerable(IEnumerable actual, NewArrayExpression arrayExpression)
+        {
+            var array = actual.Cast<object>().ToArray();
 
-		private static void ShouldMatchIEnumerable(IEnumerable actual, NewArrayExpression arrayExpression)
+            if (arrayExpression.Expressions.Any(x => !(x is MemberInitExpression)))
+            {
+                var expected = (IEnumerable)Expression.Lambda<Func<object>>(arrayExpression).Compile()();
+                var expectedArray = expected.Cast<object>().ToArray();
+
+                array.ShouldLookLike(expectedArray);
+
+                return;
+            }
+
+            for (int i = 0; i < arrayExpression.Expressions.Count; i++)
+            {
+                ShouldMatch(array[i], arrayExpression.Expressions[i] as MemberInitExpression);
+            }
+        }
+
+        private static void ShouldMatchIEnumerable(IEnumerable actual, MemberAssignment memberAssignment)
 		{
 			var array = actual.Cast<object>().ToArray();
 
-			if (arrayExpression.Expressions.Any(x => !(x is MemberInitExpression)))
-			{
-				var expected = (IEnumerable)Expression.Lambda<Func<object>>(arrayExpression).Compile()();
-				var expectedArray = expected.Cast<object>().ToArray();
+            var arrayExpression = memberAssignment.Expression as NewArrayExpression;
 
-				array.ShouldLookLike(expectedArray); 
-				
-				return;
-			}
+            if (arrayExpression != null && memberAssignment.Expression.NodeType == ExpressionType.NewArrayInit)
+            {
+                ShouldMatchIEnumerable(array, arrayExpression);
+                return;
+            }
 
-			for (int i = 0; i < arrayExpression.Expressions.Count; i++)
-			{
-				ShouldMatch(array[i], arrayExpression.Expressions[i] as MemberInitExpression);
-			}
+            // some check here to enable partial matching?
+            var expected = (IEnumerable)Expression.Lambda<Func<object>>(memberAssignment.Expression).Compile()();
+			var expectedArray = expected.Cast<object>().ToArray();
+
+			array.ShouldLookLike(expectedArray);
+
+            //for (int i = 0; i < arrayExpression.Expressions.Count; i++)
+            //{
+            //    ShouldMatch(array[i], arrayExpression.Expressions[i] as MemberInitExpression);
+            //}
 		}
 
 		private static void ShouldMatch(object actual, MemberInitExpression expression)
@@ -81,10 +99,6 @@ namespace SpecsFor.ShouldExtensions
 				    bindingAsAnotherExpression.Expression.NodeType == ExpressionType.MemberInit)
 				{
 					ShouldMatch(actualValue, bindingAsAnotherExpression.Expression as MemberInitExpression);
-				}
-				else if (bindingAsAnotherExpression != null && bindingAsAnotherExpression.Expression.NodeType == ExpressionType.NewArrayInit)
-				{
-					ShouldMatchIEnumerable(actualValue as IEnumerable, bindingAsAnotherExpression.Expression as NewArrayExpression);
 				}
 				else if (IsMoqExpression(bindingAsAnotherExpression))
 				{
@@ -105,9 +119,9 @@ namespace SpecsFor.ShouldExtensions
 						throw new EqualException(Matcher.LastMatcher.ToString(), actualValue);
 					}
 				}
-                else if (bindingAsAnotherExpression != null && actualValue.GetType().IsGenericType && actualValue.GetType().GetGenericTypeDefinition() == typeof(List<>))
+                else if (bindingAsAnotherExpression != null && actualValue as IEnumerable != null)
                 {
-                    ShouldMatchList(actualValue as IEnumerable, bindingAsAnotherExpression.Expression);
+                    ShouldMatchIEnumerable(actualValue as IEnumerable, bindingAsAnotherExpression);
                 }
 				else
 				{
